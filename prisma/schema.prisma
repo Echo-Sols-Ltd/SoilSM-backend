@@ -4,195 +4,184 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 enum Role {
   ADMIN
-  FARMER_INDIVIDUAL
-  FARMER_COOPERATIVE
+  FARMER
+  COOPERATIVE
 }
-
 
 model User {
-  id                String    @id @default(uuid())
-  name              String
-  email             String    @unique
-  password          String
-  phoneNumber       String?
-  bio               String?
-  profile           String?
-  otp               String?
-  verified          Boolean   @default(false)
-  twoFactorEnabled  Boolean   @default(false)
-  role              Role      @default(FARMER_INDIVIDUAL)
+  id              String                 @id @default(uuid())
+  name            String
+  email           String                 @unique
+  password        String
+  phoneNumber     String?
+  bio             String?
+  role            Role                   @default(FARMER)
 
-  cooperativeName   String?   // for FARMER_COOPERATIVE
-  farmLocation      String?   // for all farmers
+  farms           Farm[]
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  tasks           Task[]
+  notifications   Notification[]
+  posts           Post[]
+  sentMessages    Message[]              @relation("SentMessages")
+  receivedMessages Message[]             @relation("ReceivedMessages")
+  conversations   ConversationMembers[]
+  comments        Comment[]
+  likes           Like[]
+  media           Media[]
 
-  tasks             Task[]
-  notifications     Notification[]
-  posts             Post[]
-  sentMessages      Message[] @relation("SentMessages")
-  receivedMessages  Message[] @relation("ReceivedMessages")
-  conversations     ConversationMembers[]
-  comments          Comment[]
-  likes             Like[]
-  media             Media[]
-  sensors           Sensor[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 }
 
-
-model Task {
-  id        String   @id @default(uuid())
-  userId    String
-  name      String
-  date      DateTime
-  time      String
-  status    String
-  category  String
-
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model SoilData {
+model Farm {
   id          String    @id @default(uuid())
-  moisture    Float
-  nitrogen    Float
-  phosphorus  Float
-  potassium   Float
-  pH          Float
-  temperature Float
+  name        String
+  location    String?
+  size        Float?    
+  description String?
+
+  owner       User      @relation(fields: [ownerId], references: [id])
+  ownerId     String
+
+  sensors     Sensor[]
+  posts       Post[]
+  tasks       Task[]
+  media       Media[]
+
   createdAt   DateTime  @default(now())
-  sensorId    String?
-
-  sensor      Sensor?   @relation(fields: [sensorId], references: [id])
-}
-
-model Notification {
-  id        String    @id @default(uuid())
-  title     String
-  message   String
-  category  String
-  userId    String
-  createdAt DateTime  @default(now())
-  readAt    DateTime?
-  priority  String
-
-  user      User      @relation(fields: [userId], references: [id])
-}
-
-model Post {
-  id            String    @id @default(uuid())
-  userId        String
-  title         String
-  content       String
-  mediaUrl      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  likesCount    Int       @default(0)
-  commentsCount Int       @default(0)
-  type          String
-
-  user          User      @relation(fields: [userId], references: [id])
-  comments      Comment[]
-  likes         Like[]
-}
-
-model Message {
-  id        String    @id @default(uuid())
-  senderId  String
-  receiverId String
-  convoId   String
-  content   String
-  type      String
-  status    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  isEdited  Boolean   @default(false)
-
-  sender     User      @relation("SentMessages", fields: [senderId], references: [id])
-  receiver   User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  conversation Conversation @relation(fields: [convoId], references: [id])
-}
-
-model Conversation {
-  id        String    @id @default(uuid())
-  type      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  messages   Message[]
-  members    ConversationMembers[]
-}
-
-model ConversationMembers {
-  conversationId String
-  userId         String
-
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
-
-  @@id([conversationId, userId])
-}
-
-model Comment {
-  id        String    @id @default(uuid())
-  postId    String
-  userId    String
-  content   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  post      Post     @relation(fields: [postId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model Like {
-  id        String    @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime  @default(now())
-
-  post      Post     @relation(fields: [postId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model Media {
-  id        String    @id @default(uuid())
-  url       String
-  userId    String
-  type      String
-  createdAt DateTime  @default(now())
-
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model Category {
-  id    String    @id @default(uuid())
-  name  String
-  type  String
+  updatedAt   DateTime  @updatedAt
 }
 
 model Sensor {
-  id        String    @id @default(uuid())
-  userId    String
-  name      String
-  location  String
-  createdAt DateTime  @default(now())
+  id         String   @id @default(uuid())
+  type       String   
+  location   String?
 
-  user      User     @relation(fields: [userId], references: [id])
-  soilData  SoilData[]
+  farm       Farm     @relation(fields: [farmId], references: [id])
+  farmId     String
 }
 
+model Task {
+  id        String   @id @default(uuid())
+  title     String
+  dueDate   DateTime?
+  completed Boolean  @default(false)
 
 
+  farm      Farm?    @relation(fields: [farmId], references: [id])
+  farmId    String?
+
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  message   String
+  seen      Boolean  @default(false)
+
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  content   String
+
+  author    User     @relation(fields: [userId], references: [id])
+  userId    String
+
+  farm      Farm?    @relation(fields: [farmId], references: [id])
+  farmId    String?
+
+  comments  Comment[]
+  likes     Like[]
+  media     Media[]
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  createdAt   DateTime @default(now())
+
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId    String
+
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId  String
+
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
+  conversationId String?
+}
+
+model Conversation {
+  id        String                 @id @default(uuid())
+  messages  Message[]
+  members   ConversationMembers[]
+}
+
+model ConversationMembers {
+  id             String       @id @default(uuid())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  text      String
+
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    String
+
+  author    User     @relation(fields: [userId], references: [id])
+  userId    String
+}
+
+model Like {
+  id        String   @id @default(uuid())
+
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    String
+
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+}
+
+model Media {
+  id        String   @id @default(uuid())
+  url       String
+  type      String  
+
+  owner     User     @relation(fields: [userId], references: [id])
+  userId    String
+
+  farm      Farm?    @relation(fields: [farmId], references: [id])
+  farmId    String?
+
+  post      Post?    @relation(fields: [postId], references: [id])
+  postId    String?
+}
